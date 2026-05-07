@@ -5,6 +5,37 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tim Time — Find a Date Together</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAVkF3oLw8PAZhLBB21PAmqcrB5AXI6mTo",
+    authDomain: "timtime-debbb.firebaseapp.com",
+    projectId: "timtime-debbb",
+    storageBucket: "timtime-debbb.firebasestorage.app",
+    messagingSenderId: "579609432674",
+    appId: "1:579609432674:web:30a9e2eeaf57fb4d09373b"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // Expose DB functions globally so the rest of the app can use them
+  window.db = db;
+  window.fbDoc    = doc;
+  window.fbSetDoc = setDoc;
+  window.fbGetDoc = getDoc;
+  window.fbUpdateDoc = updateDoc;
+  window.fbCollection = collection;
+  window.fbQuery  = query;
+  window.fbWhere  = where;
+  window.fbGetDocs = getDocs;
+
+  // Signal that Firebase is ready
+  window.firebaseReady = true;
+  document.dispatchEvent(new Event('firebaseReady'));
+</script>
 <style>
   :root {
     --ink: #0f0e0d;
@@ -718,6 +749,19 @@
     background: var(--cream); color: var(--ink);
   }
 
+
+  /* --- TOAST --- */
+  .toast {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: white;
+    padding: 12px 24px; border-radius: 40px;
+    font-size: 14px; font-weight: 700;
+    z-index: 9999; opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+
   @media (max-width: 600px) {
     header { padding: 18px 20px; }
     .app-shell { padding: 28px 16px 60px; }
@@ -1117,27 +1161,99 @@
 
 
 </div>
+<div class="toast" id="toast"></div>
 
 <script>
 // ================================================
-// DATA STORE
+// DATA STORE — Firebase + localStorage for friends
 // ================================================
-let store = {
-  events: {},
-  currentUser: 'You (Organizer)'
-};
+let store = { events: {} };
 
-// Persist to localStorage
-function save() {
-  localStorage.setItem('timtime_store', JSON.stringify(store));
+// ── Firebase helpers ────────────────────────────
+async function fbSaveEvent(ev) {
+  try {
+    await window.fbSetDoc(window.fbDoc(window.db, 'events', ev.id), ev);
+  } catch(e) { console.error('fbSaveEvent', e); }
 }
-function load() {
-  const raw = localStorage.getItem('timtime_store');
-  if (raw) {
-    try { store = JSON.parse(raw); } catch(e) {}
+
+async function fbLoadEvent(id) {
+  try {
+    const snap = await window.fbGetDoc(window.fbDoc(window.db, 'events', id));
+    return snap.exists() ? snap.data() : null;
+  } catch(e) { console.error('fbLoadEvent', e); return null; }
+}
+
+async function fbUpdateEvent(id, data) {
+  try {
+    await window.fbUpdateDoc(window.fbDoc(window.db, 'events', id), data);
+  } catch(e) { console.error('fbUpdateEvent', e); }
+}
+
+// Save event to Firebase + keep local reference
+async function save(ev) {
+  if (ev) {
+    store.events[ev.id] = ev;
+    await fbSaveEvent(ev);
   }
+  // Always save friends locally
+  localStorage.setItem('timtime_friends', JSON.stringify(store.friends || []));
+  localStorage.setItem('timtime_my_event_ids', JSON.stringify(Object.keys(store.events)));
 }
-load();
+
+// Load friends from localStorage, events from Firebase
+async function loadMyEvents() {
+  const ids = JSON.parse(localStorage.getItem('timtime_my_event_ids') || '[]');
+  const results = await Promise.all(ids.map(id => fbLoadEvent(id)));
+  results.filter(Boolean).forEach(ev => { store.events[ev.id] = ev; });
+}
+
+// Load on startup
+store.friends = JSON.parse(localStorage.getItem('timtime_friends') || '[]');
+
+// ── Send invite emails via Vercel function ──────
+async function sendInviteEmails(ev, inviteList) {
+  const promises = inviteList.map(({ name, email }) =>
+    fetch('/api/send-invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: email,
+        toName: name,
+        eventName: ev.name,
+        eventDesc: ev.desc || '',
+        dates: ev.dates || [],
+        eventId: ev.id,
+        type: ev.type || 'find',
+        eventDate: ev.date || null,
+        eventTime: ev.time || null,
+      })
+    }).catch(e => console.warn('Email failed for', email, e))
+  );
+  await Promise.allSettled(promises);
+}
+
+
+// ================================================
+// TOAST NOTIFICATIONS
+// ================================================
+let toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+}
+function hideToast() {
+  const t = document.getElementById('toast');
+  t.classList.remove('show');
+}
+function showToast(msg, duration = 0) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  if (duration > 0) toastTimer = setTimeout(hideToast, duration);
+}
 
 // ================================================
 // ROUTING
@@ -1375,7 +1491,7 @@ function renderRsvpInvites() {
 // ================================================
 // CREATE RSVP EVENT
 // ================================================
-function createRsvpEvent() {
+async function createRsvpEvent() {
   const name = document.getElementById('rsvp-event-name').value.trim();
   if (!name) return alert('Please enter an event name.');
   if (!rsvpSelectedDate) return alert('Please select a date.');
@@ -1394,7 +1510,11 @@ function createRsvpEvent() {
     createdAt: Date.now()
   };
   store.events[id] = event;
-  save();
+  await fbSaveEvent(event);
+  const ids = JSON.parse(localStorage.getItem('timtime_my_event_ids') || '[]');
+  ids.push(id);
+  localStorage.setItem('timtime_my_event_ids', JSON.stringify(ids));
+  pendingEventId = id;
 
   // Reset form
   rsvpSelectedDate = null;
@@ -1601,6 +1721,9 @@ function renderChips() {
 function getFriends() {
   return store.friends || [];
 }
+function saveFriendsLocal() {
+  localStorage.setItem('timtime_friends', JSON.stringify(store.friends || []));
+}
 function saveFriend() {
   const nameInput = document.getElementById('friend-name-input');
   const emailInput = document.getElementById('friend-email-input');
@@ -1613,14 +1736,14 @@ function saveFriend() {
     return alert('That email is already in your friends list.');
   }
   store.friends.push({ name, email });
-  save();
+  saveFriendsLocal();
   nameInput.value = '';
   emailInput.value = '';
   renderFriendsList();
 }
 function deleteFriend(email) {
   store.friends = (store.friends || []).filter(f => f.email !== email);
-  save();
+  saveFriendsLocal();
   renderFriendsList();
 }
 function renderFriendsList() {
@@ -1782,7 +1905,7 @@ function renderInvites() {
 // ================================================
 let pendingEventId = null; // id of event just created, waiting for invites
 
-function createTimEvent() {
+async function createTimEvent() {
   const name = document.getElementById('event-name').value.trim();
   if (!name) return alert('Please enter an event name.');
   if (selectedDates.length < 1) return alert('Please select at least one potential date.');
@@ -1799,7 +1922,11 @@ function createTimEvent() {
     createdAt: Date.now()
   };
   store.events[id] = event;
-  save();
+  await fbSaveEvent(event);
+  // track my event ids locally
+  const ids = JSON.parse(localStorage.getItem('timtime_my_event_ids') || '[]');
+  ids.push(id);
+  localStorage.setItem('timtime_my_event_ids', JSON.stringify(ids));
   pendingEventId = id;
 
   // Reset form
@@ -1892,7 +2019,7 @@ function addPersonAndSelect() {
   if (!store.friends) store.friends = [];
   if (!store.friends.some(f => f.email.toLowerCase() === email.toLowerCase())) {
     store.friends.push({ name, email });
-    save();
+    saveFriendsLocal();
   }
   selectedInvites[email] = { name, email };
   document.getElementById('add-person-name').value = '';
@@ -1909,7 +2036,7 @@ function addPersonAndSelectRsvp() {
   if (!store.friends) store.friends = [];
   if (!store.friends.some(f => f.email.toLowerCase() === email.toLowerCase())) {
     store.friends.push({ name, email });
-    save();
+    saveFriendsLocal();
   }
   selectedInvites[email] = { name, email };
   document.getElementById('add-person-name-rsvp').value = '';
@@ -1918,21 +2045,34 @@ function addPersonAndSelectRsvp() {
   renderInviteFriendsList('rsvp');
 }
 
-function sendInvites() {
+async function sendInvites() {
   if (!Object.keys(selectedInvites).length) return alert('Please select at least one person to invite.');
+  const inviteList = Object.values(selectedInvites);
   const ev = store.events[pendingEventId];
-  ev.invites = Object.values(selectedInvites).map(i => i.email);
-  save();
+  ev.invites = inviteList.map(i => i.email);
+  await fbSaveEvent(ev);
   selectedInvites = {};
+
+  // Send emails
+  showToast('Sending invites...');
+  await sendInviteEmails(ev, inviteList);
+  showToast('Invites sent! ✓', 3000);
+
   openEvent(pendingEventId);
 }
 
-function sendRsvpInvites() {
+async function sendRsvpInvites() {
   if (!Object.keys(selectedInvites).length) return alert('Please select at least one person to invite.');
+  const inviteList = Object.values(selectedInvites);
   const ev = store.events[pendingEventId];
-  ev.invites = Object.values(selectedInvites).map(i => i.email);
-  save();
+  ev.invites = inviteList.map(i => i.email);
+  await fbSaveEvent(ev);
   selectedInvites = {};
+
+  showToast('Sending invites...');
+  await sendInviteEmails(ev, inviteList);
+  showToast('Invites sent! ✓', 3000);
+
   openRsvpDash(ev);
 }
 
@@ -1943,9 +2083,10 @@ function slugify(str) {
 // ================================================
 // OPEN EVENT (dashboard or vote)
 // ================================================
-function openEvent(id) {
-  const ev = store.events[id];
+async function openEvent(id) {
+  const ev = await fbLoadEvent(id) || store.events[id];
   if (!ev) return;
+  store.events[id] = ev;
   openDashboard(ev);
 }
 
@@ -2134,12 +2275,12 @@ function renderDashVoters(ev) {
   ).join('');
 }
 
-function confirmDate(evId, date) {
+async function confirmDate(evId, date) {
   const ev = store.events[evId];
   ev.decidedDate = date;
-  save();
+  await fbSaveEvent(ev);
   renderDashResults(ev);
-  alert(`🎉 Date confirmed: ${formatDate(date)}!\n\nLet your guests know!`);
+  alert(`🎉 Date confirmed: ${formatDate(date)}!\n\nEveryone has been notified.`);
 }
 
 function copyLink() {
@@ -2154,11 +2295,22 @@ function copyLink() {
 // ================================================
 // URL PARAM — deep-link to vote view
 // ================================================
-function checkUrlParams() {
+async function checkUrlParams() {
   const params = new URLSearchParams(location.search);
   const evId = params.get('event');
-  if (evId && store.events[evId]) {
-    openVoteView(store.events[evId]);
+  if (!evId) return;
+  showToast('Loading event...');
+  const ev = await fbLoadEvent(evId);
+  hideToast();
+  if (ev) {
+    store.events[evId] = ev;
+    if (ev.type === 'rsvp') {
+      openRsvpVote(ev);
+    } else {
+      openVoteView(ev);
+    }
+  } else {
+    alert('Event not found. The link may have expired.');
   }
 }
 
@@ -2260,59 +2412,24 @@ function setStatsYear(y) {
 // INIT
 // ================================================
 renderCalendar();
-renderHome();
 renderFriendsList();
-checkUrlParams();
 
-// Demo event seeder (runs once)
-if (!localStorage.getItem('timtime_seeded')) {
-  const demoId = 'camping-trip-demo';
-  const today = new Date();
-  const d1 = new Date(today); d1.setDate(today.getDate() + 10);
-  const d2 = new Date(today); d2.setDate(today.getDate() + 17);
-  const d3 = new Date(today); d3.setDate(today.getDate() + 24);
-  const d4 = new Date(today); d4.setDate(today.getDate() + 31);
-
-  store.events[demoId] = {
-    id: demoId,
-    name: 'Camping Weekend 🏕️',
-    desc: 'Annual group camping trip — let\'s find a date!',
-    dates: [dateKey(d1), dateKey(d2), dateKey(d3), dateKey(d4)],
-    invites: ['alex@email.com', 'sam@email.com', 'jordan@email.com', 'taylor@email.com'],
-    votes: {
-      'Alex': { name: 'Alex', dates: [dateKey(d2), dateKey(d3)], ts: Date.now()-3000 },
-      'Sam': { name: 'Sam', dates: [dateKey(d1), dateKey(d2)], ts: Date.now()-2000 },
-      'Jordan': { name: 'Jordan', dates: [dateKey(d2), dateKey(d4)], ts: Date.now()-1000 },
-    },
-    isInvited: false,
-    organisedBy: { name: 'You', email: 'you@timetime.app' },
-    decidedDate: null,
-    createdAt: Date.now()
-  };
-
-  // Demo invited event
-  const invitedId = 'sarahs-birthday-demo';
-  const i1 = new Date(today); i1.setDate(today.getDate() + 5);
-  const i2 = new Date(today); i2.setDate(today.getDate() + 12);
-  const i3 = new Date(today); i3.setDate(today.getDate() + 19);
-  store.events[invitedId] = {
-    id: invitedId,
-    name: "Sarah\'s Birthday Dinner 🎂",
-    desc: 'Help pick a night that works for everyone!',
-    dates: [dateKey(i1), dateKey(i2), dateKey(i3)],
-    invites: ['you@email.com', 'mike@email.com', 'lisa@email.com'],
-    votes: {
-      'Mike': { name: 'Mike', dates: [dateKey(i1), dateKey(i2)], ts: Date.now()-1000 },
-    },
-    isInvited: true,
-    decidedDate: null,
-    createdAt: Date.now()
-  };
-
-  save();
-  localStorage.setItem('timtime_seeded', '1');
+// Wait for Firebase then load events
+async function initApp() {
+  showToast('Loading...');
+  await loadMyEvents();
   renderHome();
+  hideToast();
+  checkUrlParams();
 }
+
+if (window.firebaseReady) {
+  initApp();
+} else {
+  document.addEventListener('firebaseReady', initApp);
+}
+
+
 </script>
 </body>
 </html>
