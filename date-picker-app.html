@@ -1,0 +1,2318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tim Time — Find a Date Together</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0f0e0d;
+    --paper: #f5f2ec;
+    --cream: #ede9df;
+    --sand: #d6cfc0;
+    --accent: #e8623a;
+    --accent2: #4a7c59;
+    --accent3: #d4a843;
+    --muted: #8a8278;
+    --white: #ffffff;
+    --radius: 16px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* --- GRAIN OVERLAY --- */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 1000; opacity: 0.5;
+  }
+
+  header {
+    padding: 28px 40px;
+    display: flex; align-items: center; gap: 12px;
+    border-bottom: 1.5px solid var(--sand);
+    background: var(--paper);
+  }
+  .logo {
+    font-family: 'Nunito', sans-serif;
+    font-size: 22px; font-weight: 800;
+    color: var(--ink);
+    letter-spacing: -0.5px;
+  }
+  .logo span { color: var(--accent); }
+  .tagline {
+    margin-left: auto;
+    font-size: 13px; color: var(--muted);
+    font-weight: 400;
+  }
+
+  .app-shell {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* --- VIEW MANAGEMENT --- */
+  .view { display: none; animation: fadeUp 0.4s ease; }
+  .view.active { display: block; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* --- HEADINGS --- */
+  .view-title {
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(32px, 5vw, 52px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -1.5px;
+    margin-bottom: 8px;
+  }
+  .view-sub {
+    font-size: 16px; color: var(--muted);
+    margin-bottom: 40px; font-weight: 400;
+  }
+
+  /* --- CARDS --- */
+  .card {
+    background: var(--white);
+    border: 1.5px solid var(--sand);
+    border-radius: var(--radius);
+    padding: 28px 32px;
+    margin-bottom: 20px;
+  }
+  .card-label {
+    font-family: 'Nunito', sans-serif;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 12px;
+  }
+
+  /* --- INPUTS --- */
+  input[type="text"], input[type="email"], textarea {
+    width: 100%;
+    padding: 13px 16px;
+    border: 1.5px solid var(--sand);
+    border-radius: var(--radius-sm);
+    font-family: 'Nunito', sans-serif;
+    font-size: 15px;
+    background: var(--paper);
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 80px; }
+
+  .input-row { display: flex; gap: 12px; align-items: center; }
+  .input-row input { flex: 1; }
+
+  /* --- BUTTONS --- */
+  .btn {
+    font-family: 'Nunito', sans-serif;
+    font-size: 14px; font-weight: 700;
+    padding: 13px 28px;
+    border-radius: var(--radius-sm);
+    border: none; cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: all 0.18s;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn-primary {
+    background: var(--accent); color: var(--white);
+  }
+  .btn-primary:hover { background: #cf4f28; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(232,98,58,0.3); }
+  .btn-secondary {
+    background: var(--cream); color: var(--ink);
+    border: 1.5px solid var(--sand);
+  }
+  .btn-secondary:hover { background: var(--sand); }
+  .btn-sm { padding: 8px 16px; font-size: 12px; }
+  .btn-ghost {
+    background: transparent; color: var(--muted);
+    border: 1.5px solid var(--sand);
+  }
+  .btn-ghost:hover { color: var(--ink); border-color: var(--ink); }
+
+  /* --- CALENDAR --- */
+  .calendar-wrap {
+    display: flex; gap: 24px;
+    flex-wrap: wrap;
+  }
+  .calendar {
+    flex: 0 0 auto;
+    background: var(--cream);
+    border-radius: var(--radius);
+    padding: 20px;
+    min-width: 280px;
+  }
+  .cal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .cal-month {
+    font-family: 'Nunito', sans-serif;
+    font-size: 15px; font-weight: 700;
+  }
+  .cal-nav {
+    background: none; border: none; cursor: pointer;
+    font-size: 18px; color: var(--muted); padding: 4px 8px;
+    border-radius: 6px; transition: background 0.15s;
+  }
+  .cal-nav:hover { background: var(--sand); }
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+  }
+  .cal-day-name {
+    font-size: 10px; font-weight: 700; color: var(--muted);
+    text-align: center; padding: 4px 0;
+    letter-spacing: 0.5px;
+  }
+  .cal-day {
+    aspect-ratio: 1;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; border-radius: 6px;
+    cursor: pointer; transition: all 0.15s;
+    font-weight: 500; position: relative;
+    border: 1.5px solid transparent;
+    user-select: none;
+  }
+  .cal-day:hover:not(.empty):not(.past) {
+    background: var(--sand);
+  }
+  .cal-day.selected {
+    background: var(--accent); color: var(--white);
+    border-color: var(--accent);
+    font-weight: 700;
+  }
+  .cal-day.empty, .cal-day.past { opacity: 0.25; cursor: default; pointer-events: none; }
+  .cal-day.today { border-color: var(--accent); }
+
+  .selected-dates {
+    flex: 1; min-width: 200px;
+  }
+  .selected-dates h4 {
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px; font-weight: 700; margin-bottom: 12px;
+    color: var(--muted); letter-spacing: 1px; text-transform: uppercase;
+  }
+  .date-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--cream);
+    border: 1.5px solid var(--sand);
+    border-radius: 40px;
+    padding: 6px 14px 6px 12px;
+    font-size: 13px; font-weight: 500;
+    margin: 0 6px 8px 0;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .date-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .date-chip .remove {
+    font-size: 16px; color: var(--muted); line-height: 1;
+  }
+  .date-chip:hover .remove { color: var(--accent); }
+
+  /* --- INVITE TAGS --- */
+  .invite-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .invite-tag {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--cream); border: 1.5px solid var(--sand);
+    border-radius: 40px; padding: 5px 12px;
+    font-size: 13px;
+  }
+  .invite-tag .rm {
+    cursor: pointer; color: var(--muted);
+    font-size: 16px; transition: color 0.15s;
+  }
+  .invite-tag .rm:hover { color: var(--accent); }
+
+  /* --- EVENT LIST (HOMEPAGE) --- */
+  .event-list { display: flex; flex-direction: column; gap: 14px; }
+  .event-card {
+    background: var(--white);
+    border: 1.5px solid var(--sand);
+    border-radius: var(--radius);
+    padding: 22px 28px;
+    display: flex; align-items: center; gap: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .event-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.07); }
+  .event-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    background: var(--cream);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+  }
+  .event-meta { flex: 1; }
+  .event-name { font-family: 'Nunito', sans-serif; font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+  .event-detail { font-size: 13px; color: var(--muted); }
+  .event-status {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+    padding: 5px 12px; border-radius: 40px;
+  }
+  .status-open { background: #e8f4ec; color: var(--accent2); }
+  .status-decided { background: #fff0eb; color: var(--accent); }
+  .status-pending { background: #fef9ee; color: var(--accent3); }
+
+  /* --- AVAILABILITY BARS --- */
+  .avail-grid { display: flex; flex-direction: column; gap: 10px; }
+  .avail-row {
+    display: grid;
+    grid-template-columns: 160px 1fr auto;
+    align-items: center; gap: 16px;
+  }
+  .avail-date { font-size: 14px; font-weight: 500; }
+  .avail-bar-track {
+    height: 20px; background: var(--cream);
+    border-radius: 40px; overflow: hidden;
+    position: relative;
+  }
+  .avail-bar-fill {
+    height: 100%; border-radius: 40px;
+    background: var(--accent2);
+    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+  }
+  .avail-bar-fill.best { background: var(--accent); }
+  .avail-count { font-size: 13px; color: var(--muted); white-space: nowrap; font-weight: 500; }
+
+  /* --- VOTE DATES --- */
+  .vote-grid { display: flex; flex-direction: column; gap: 8px; }
+  .vote-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px;
+    border: 1.5px solid var(--sand);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .vote-row:hover { border-color: var(--accent); background: #fff8f5; }
+  .vote-row.voted { border-color: var(--accent2); background: #f0f7f2; }
+  .vote-check {
+    width: 24px; height: 24px;
+    border: 2px solid var(--sand);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .vote-row.voted .vote-check {
+    background: var(--accent2); border-color: var(--accent2); color: white;
+  }
+  .vote-date-label { flex: 1; font-size: 15px; font-weight: 500; }
+  .vote-count-badge {
+    font-size: 11px; font-weight: 700;
+    background: var(--cream); color: var(--muted);
+    padding: 3px 10px; border-radius: 40px;
+  }
+
+  /* --- RESULT BANNER --- */
+  .result-banner {
+    background: linear-gradient(135deg, var(--accent) 0%, #cf4f28 100%);
+    color: white; border-radius: var(--radius);
+    padding: 32px 36px; margin-bottom: 24px;
+    position: relative; overflow: hidden;
+  }
+  .result-banner::after {
+    content: '🎉';
+    position: absolute; right: 36px; top: 50%; transform: translateY(-50%);
+    font-size: 56px; opacity: 0.3;
+  }
+  .result-banner h3 {
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; opacity: 0.8; margin-bottom: 8px;
+  }
+  .result-banner .win-date {
+    font-family: 'Nunito', sans-serif;
+    font-size: 36px; font-weight: 800;
+    line-height: 1; margin-bottom: 8px;
+  }
+  .result-banner p { opacity: 0.85; font-size: 14px; }
+
+  /* --- PROGRESS RING --- */
+  .progress-ring-wrap {
+    display: flex; align-items: center; gap: 20px;
+    padding: 16px 0;
+  }
+  .progress-ring-text { font-size: 13px; color: var(--muted); }
+  .progress-ring-text strong { color: var(--ink); font-size: 15px; }
+
+  /* --- EMPTY STATE --- */
+  .empty-state {
+    text-align: center; padding: 60px 20px;
+  }
+  .empty-state .emoji { font-size: 48px; margin-bottom: 16px; }
+  .empty-state p { color: var(--muted); margin-bottom: 24px; }
+
+  /* --- NAV TABS --- */
+  .tabs { display: flex; gap: 4px; margin-bottom: 32px; }
+  .tab {
+    font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700;
+    padding: 9px 20px; border-radius: 40px;
+    cursor: pointer; transition: all 0.15s;
+    border: none; background: none; color: var(--muted);
+    letter-spacing: 0.3px;
+  }
+  .tab.active { background: var(--ink); color: var(--white); }
+  .tab:hover:not(.active) { background: var(--cream); color: var(--ink); }
+
+  /* --- MISC --- */
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .ml-auto { margin-left: auto; }
+  hr { border: none; border-top: 1.5px solid var(--sand); margin: 24px 0; }
+  .mt-16 { margin-top: 16px; }
+  .mt-24 { margin-top: 24px; }
+  .text-muted { color: var(--muted); font-size: 13px; }
+
+  /* share box */
+  .share-box {
+    background: var(--cream);
+    border: 1.5px dashed var(--sand);
+    border-radius: var(--radius-sm);
+    padding: 16px 20px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .share-url { flex: 1; font-size: 13px; color: var(--muted); word-break: break-all; }
+  .copy-feedback { font-size: 12px; color: var(--accent2); display: none; }
+
+
+  /* --- AUTOCOMPLETE --- */
+  .autocomplete-wrap { position: relative; flex: 1; }
+  .autocomplete-dropdown {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: var(--white);
+    border: 1.5px solid var(--sand);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    z-index: 100; overflow: hidden;
+    display: none;
+  }
+  .autocomplete-dropdown.open { display: block; }
+  .ac-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 16px; cursor: pointer;
+    transition: background 0.12s;
+  }
+  .ac-item:hover, .ac-item.focused { background: var(--cream); }
+  .ac-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--accent); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; flex-shrink: 0;
+  }
+  .ac-info { flex: 1; }
+  .ac-name { font-size: 14px; font-weight: 600; }
+  .ac-email { font-size: 12px; color: var(--muted); }
+
+  /* --- FRIEND CARDS (SETTINGS) --- */
+  .friend-list { display: flex; flex-direction: column; gap: 10px; }
+  .friend-card {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px;
+    background: var(--cream);
+    border: 1.5px solid var(--sand);
+    border-radius: var(--radius-sm);
+    transition: border-color 0.15s;
+  }
+  .friend-card:hover { border-color: var(--sand); }
+  .friend-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--accent); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 700; flex-shrink: 0;
+  }
+  .friend-info { flex: 1; }
+  .friend-name { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+  .friend-email { font-size: 12px; color: var(--muted); }
+  .friend-del {
+    background: none; border: none; cursor: pointer;
+    color: var(--muted); font-size: 18px;
+    padding: 4px 8px; border-radius: 6px;
+    transition: color 0.15s, background 0.15s;
+  }
+  .friend-del:hover { color: var(--accent); background: #fff0eb; }
+  .settings-add-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .settings-add-row input { flex: 1; min-width: 140px; }
+
+
+  /* --- LEADERBOARD --- */
+  .leaderboard-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 14px;
+  }
+  .leaderboard-table thead tr {
+    border-bottom: 2px solid var(--sand);
+  }
+  .leaderboard-table th {
+    font-family: 'Nunito', sans-serif;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted); padding: 0 12px 12px 12px;
+    text-align: left;
+  }
+  .lb-rank { width: 40px; }
+  .lb-name { }
+  .lb-num { text-align: right !important; width: 110px; }
+  .leaderboard-table tbody tr {
+    border-bottom: 1px solid var(--cream);
+    transition: background 0.12s;
+  }
+  .leaderboard-table tbody tr:hover { background: var(--cream); }
+  .leaderboard-table tbody tr:last-child { border-bottom: none; }
+  .leaderboard-table td {
+    padding: 14px 12px; vertical-align: middle;
+  }
+  .lb-rank-num {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800; font-size: 16px;
+    color: var(--muted);
+  }
+  .lb-rank-num.gold   { color: #d4a843; }
+  .lb-rank-num.silver { color: #9a9a9a; }
+  .lb-rank-num.bronze { color: #c07c4a; }
+  .lb-person {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .lb-avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: white; flex-shrink: 0;
+  }
+  .lb-person-name { font-weight: 700; font-size: 15px; }
+  .lb-person-email { font-size: 11px; color: var(--muted); }
+  .lb-cell-num {
+    text-align: right; font-weight: 700; font-size: 15px;
+  }
+  .lb-cell-num.zero { color: var(--sand); font-weight: 400; }
+  .lb-rate {
+    text-align: right;
+  }
+  .lb-rate-pill {
+    display: inline-block;
+    padding: 3px 10px; border-radius: 40px;
+    font-size: 11px; font-weight: 700;
+  }
+  .lb-rate-high { background: #e8f4ec; color: var(--accent2); }
+  .lb-rate-mid  { background: #fef9ee; color: var(--accent3); }
+  .lb-rate-low  { background: #fff0eb; color: var(--accent); }
+  .year-link {
+    font-family: 'Nunito', sans-serif; font-size: 22px; font-weight: 800;
+    color: var(--sand); cursor: pointer; transition: color 0.15s;
+    letter-spacing: -0.5px;
+  }
+  .year-link.active { color: var(--ink); }
+  .year-link:hover:not(.active) { color: var(--muted); }
+
+
+
+  /* --- EVENT TYPE PICKER --- */
+  .type-picker-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 32px;
+  }
+  .type-card {
+    background: var(--white);
+    border: 2px solid var(--sand);
+    border-radius: var(--radius);
+    padding: 32px 28px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+  }
+  .type-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.08);
+  }
+  .type-card-icon {
+    font-size: 36px;
+    margin-bottom: 16px;
+    display: block;
+  }
+  .type-card-title {
+    font-family: 'Nunito', sans-serif;
+    font-size: 20px; font-weight: 800;
+    margin-bottom: 8px; color: var(--ink);
+  }
+  .type-card-desc {
+    font-size: 13px; color: var(--muted);
+    line-height: 1.5;
+  }
+  .type-card.find:hover { border-color: var(--accent); }
+  .type-card.set:hover  { border-color: var(--accent2); }
+  .type-card.set .type-card-title { }
+
+  /* --- RSVP VIEW --- */
+  .rsvp-date-display {
+    background: var(--cream);
+    border-radius: var(--radius-sm);
+    padding: 16px 20px;
+    font-size: 18px; font-weight: 700;
+    margin-bottom: 4px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .rsvp-time-display {
+    font-size: 14px; color: var(--muted); margin-bottom: 20px; padding-left: 4px;
+  }
+  .rsvp-btn-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px; margin-top: 8px;
+  }
+  .rsvp-btn {
+    padding: 18px; border-radius: var(--radius-sm);
+    font-family: 'Nunito', sans-serif;
+    font-size: 16px; font-weight: 700;
+    border: 2px solid var(--sand);
+    cursor: pointer; transition: all 0.18s;
+    background: var(--white);
+    display: flex; flex-direction: column;
+    align-items: center; gap: 6px;
+  }
+  .rsvp-btn .rsvp-icon { font-size: 28px; }
+  .rsvp-btn.yes:hover, .rsvp-btn.yes.selected {
+    background: #f0f7f2; border-color: var(--accent2); color: var(--accent2);
+  }
+  .rsvp-btn.no:hover, .rsvp-btn.no.selected {
+    background: #fff0eb; border-color: var(--accent); color: var(--accent);
+  }
+  .rsvp-results {
+    display: flex; gap: 12px; margin-top: 8px;
+  }
+  .rsvp-result-box {
+    flex: 1; padding: 16px;
+    border-radius: var(--radius-sm);
+    text-align: center;
+  }
+  .rsvp-result-box.yes-box { background: #f0f7f2; }
+  .rsvp-result-box.no-box  { background: #fff0eb; }
+  .rsvp-result-num {
+    font-family: 'Nunito', sans-serif;
+    font-size: 32px; font-weight: 800;
+    margin-bottom: 4px;
+  }
+  .rsvp-result-box.yes-box .rsvp-result-num { color: var(--accent2); }
+  .rsvp-result-box.no-box  .rsvp-result-num { color: var(--accent); }
+  .rsvp-result-label { font-size: 12px; color: var(--muted); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .rsvp-names { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  @media (max-width: 600px) {
+    .type-picker-grid { grid-template-columns: 1fr; }
+    .rsvp-btn-grid { grid-template-columns: 1fr 1fr; }
+  }
+
+
+  /* --- INVITE FRIENDS TOGGLE VIEW --- */
+  .invite-friend-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 16px;
+    border: 1.5px solid var(--sand);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+    margin-bottom: 8px;
+    background: var(--white);
+  }
+  .invite-friend-row:hover { border-color: var(--accent2); background: #f0f7f2; }
+  .invite-friend-row.selected { border-color: var(--accent2); background: #f0f7f2; }
+  .invite-toggle {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 2px solid var(--sand);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0; transition: all 0.15s;
+    background: var(--white);
+  }
+  .invite-friend-row.selected .invite-toggle {
+    background: var(--accent2); border-color: var(--accent2); color: white;
+  }
+  .invite-friend-info { flex: 1; }
+  .invite-friend-name { font-size: 15px; font-weight: 700; }
+  .invite-friend-email { font-size: 12px; color: var(--muted); }
+  .invite-add-person {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 16px;
+    border: 1.5px dashed var(--sand);
+    border-radius: var(--radius-sm);
+    cursor: pointer; transition: all 0.15s;
+    background: none; width: 100%; text-align: left;
+    font-family: 'Nunito', sans-serif; font-size: 14px;
+    font-weight: 700; color: var(--muted);
+    margin-top: 4px;
+  }
+  .invite-add-person:hover { border-color: var(--accent); color: var(--accent); background: #fff8f5; }
+  .add-person-form {
+    border: 1.5px solid var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 16px; margin-top: 8px;
+    background: #fff8f5; display: none;
+  }
+  .add-person-form.open { display: block; }
+  .add-person-form .input-row { gap: 8px; }
+  .invite-selected-summary {
+    margin-top: 16px; padding-top: 16px;
+    border-top: 1.5px solid var(--cream);
+    font-size: 13px; color: var(--muted);
+  }
+  .invite-selected-summary strong { color: var(--ink); }
+
+
+  /* --- INVITED PERSON ROW --- */
+  .invited-person-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--cream);
+  }
+  .invited-person-row:last-child { border-bottom: none; }
+  .invited-status {
+    font-size: 11px; font-weight: 700;
+    padding: 4px 10px; border-radius: 40px;
+    letter-spacing: 0.3px; white-space: nowrap;
+  }
+  .invited-status.voted   { background: #e8f4ec; color: var(--accent2); }
+  .invited-status.pending { background: var(--cream); color: var(--muted); }
+  .invited-status.declined { background: #fff0eb; color: var(--accent); }
+  .reinvite-btn {
+    font-family: 'Nunito', sans-serif;
+    font-size: 12px; font-weight: 700;
+    padding: 5px 12px; border-radius: 40px;
+    border: 1.5px solid var(--sand);
+    background: none; cursor: pointer;
+    color: var(--muted); transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .reinvite-btn:hover {
+    border-color: var(--accent); color: var(--accent); background: #fff8f5;
+  }
+
+
+  /* --- ICON BUTTONS --- */
+  .icon-btn {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    border: none; background: none;
+    cursor: pointer; color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .icon-btn:hover {
+    background: var(--cream); color: var(--ink);
+  }
+
+  @media (max-width: 600px) {
+    header { padding: 18px 20px; }
+    .app-shell { padding: 28px 16px 60px; }
+    .card { padding: 20px; }
+    .avail-row { grid-template-columns: 120px 1fr auto; }
+    .calendar-wrap { flex-direction: column; }
+    .lb-two-col { grid-template-columns: 1fr !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Tim <span>Time</span></div>
+  <div style="margin-left:auto; display:flex; gap:4px;">
+    <button class="icon-btn" onclick="goView('view-stats')" title="Stats">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/></svg>
+    </button>
+    <button class="icon-btn" onclick="goView('view-settings')" title="Friends">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0-3-3.85"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="app-shell">
+
+  <!-- ========== HOME VIEW ========== -->
+  <div class="view active" id="view-home">
+
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:28px;">
+      <div class="view-title" style="margin-bottom:0;">My Events</div>
+      <button class="btn btn-primary" onclick="goView('view-type-picker')">＋ Create Event</button>
+    </div>
+
+    <div id="confirmed-events-list" class="event-list" style="margin-bottom: 36px;"></div>
+
+    <div class="card-label" style="margin-bottom: 12px;">Pending</div>
+    <div id="pending-events-list" class="event-list"></div>
+
+  </div>
+
+
+  <!-- ========== TYPE PICKER VIEW ========== -->
+  <div class="view" id="view-type-picker">
+    <button class="btn btn-ghost btn-sm" onclick="goView('view-home')" style="margin-bottom: 24px;">← Back</button>
+    <div class="view-title">Create Event</div>
+    <div class="view-sub">What kind of event is it?</div>
+
+    <div class="type-picker-grid">
+      <div class="type-card find" onclick="startCreateEvent('find')">
+        <span class="type-card-icon">🗓️</span>
+        <div class="type-card-title">Find a Date</div>
+        <div class="type-card-desc">Not sure when? Propose a few dates and let everyone vote on which works best.</div>
+      </div>
+      <div class="type-card set" onclick="startCreateEvent('set')">
+        <span class="type-card-icon">✅</span>
+        <div class="type-card-title">Set Date RSVP</div>
+        <div class="type-card-desc">Know when it is? Pick the date and time, and collect who's in or out.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== CREATE VIEW ========== -->
+  <div class="view" id="view-create">
+    <button class="btn btn-ghost btn-sm" onclick="goView('view-type-picker')" style="margin-bottom: 24px;">← Back</button>
+    <div class="view-title">Find a Date</div>
+    <div class="view-sub">Name your event and pick some potential dates.</div>
+
+    <!-- Step 1: Event Details -->
+    <div class="card">
+      <div class="card-label">01 — Event Details</div>
+      <div style="display:flex; flex-direction:column; gap: 12px;">
+        <input type="text" id="event-name" placeholder="Event name (e.g. Camping Weekend 🏕️)" />
+        <textarea id="event-desc" placeholder="Short description (optional)"></textarea>
+      </div>
+    </div>
+
+    <!-- Step 2: Pick Dates -->
+    <div class="card">
+      <div class="card-label">02 — Pick Potential Dates</div>
+      <div class="calendar-wrap">
+        <div>
+          <div class="calendar" id="main-calendar"></div>
+        </div>
+        <div class="selected-dates">
+          <h4>Selected Dates (<span id="sel-count">0</span>)</h4>
+          <div id="selected-chips"></div>
+          <div class="text-muted" id="no-dates-hint" style="margin-top: 8px;">Click days on the calendar to add them.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <button class="btn btn-primary" onclick="createTimEvent()">Create Event →</button>
+      <button class="btn btn-ghost" onclick="goView('view-home')">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ========== INVITE VIEW (Find a Date) ========== -->
+  <div class="view" id="view-invite">
+    <button class="btn btn-ghost btn-sm" onclick="goView('view-home')" style="margin-bottom: 24px;">← Back</button>
+    <div class="view-title" id="invite-view-title"></div>
+    <div class="view-sub">Who do you want to invite?</div>
+    <div class="card">
+      <div class="card-label">Your Friends</div>
+      <div id="invite-friends-list"></div>
+      <button class="invite-add-person" onclick="toggleAddPersonForm()">
+        <span style="font-size:20px;">＋</span> Add a person not in your list
+      </button>
+      <div class="add-person-form" id="add-person-form">
+        <div class="input-row" style="margin-bottom:8px;">
+          <input type="text" id="add-person-name" placeholder="Full name" />
+          <input type="email" id="add-person-email" placeholder="Email address" />
+          <button class="btn btn-secondary btn-sm" onclick="addPersonAndSelect()">Add</button>
+        </div>
+      </div>
+      <div class="invite-selected-summary" id="invite-summary"></div>
+    </div>
+    <div class="row">
+      <button class="btn btn-primary" onclick="sendInvites()">Send Invites →</button>
+    </div>
+  </div>
+
+
+  <!-- ========== CREATE RSVP VIEW ========== -->
+  <div class="view" id="view-create-rsvp">
+    <button class="btn btn-ghost btn-sm" onclick="goView('view-type-picker')" style="margin-bottom: 24px;">← Back</button>
+    <div class="view-title">Set Date RSVP</div>
+    <div class="view-sub">Pick your date and time.</div>
+
+    <!-- Step 1 -->
+    <div class="card">
+      <div class="card-label">01 — Event Details</div>
+      <div style="display:flex; flex-direction:column; gap: 12px;">
+        <input type="text" id="rsvp-event-name" placeholder="Event name (e.g. Sarah's Birthday 🎂)" />
+        <textarea id="rsvp-event-desc" placeholder="Short description (optional)"></textarea>
+      </div>
+    </div>
+
+    <!-- Step 2: Single date + time -->
+    <div class="card">
+      <div class="card-label">02 — Date &amp; Time</div>
+      <div class="calendar-wrap">
+        <div>
+          <div class="calendar" id="rsvp-calendar"></div>
+        </div>
+        <div class="selected-dates">
+          <h4>Selected Date</h4>
+          <div id="rsvp-date-chip" style="margin-bottom:16px;"></div>
+          <div style="margin-bottom: 8px;">
+            <div class="card-label" style="margin-bottom:8px;">Time (optional)</div>
+            <input type="time" id="rsvp-time" style="width:auto;" />
+          </div>
+          <div class="text-muted" id="rsvp-no-date-hint" style="margin-top: 8px;">Click a day to select it.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <button class="btn btn-primary" onclick="createRsvpEvent()">Create Event →</button>
+      <button class="btn btn-ghost" onclick="goView('view-home')">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ========== INVITE VIEW (RSVP) ========== -->
+  <div class="view" id="view-invite-rsvp">
+    <button class="btn btn-ghost btn-sm" onclick="goView('view-home')" style="margin-bottom: 24px;">← Back</button>
+    <div class="view-title" id="invite-rsvp-view-title"></div>
+    <div class="view-sub">Who do you want to invite?</div>
+    <div class="card">
+      <div class="card-label">Your Friends</div>
+      <div id="invite-rsvp-friends-list"></div>
+      <button class="invite-add-person" onclick="toggleAddPersonFormRsvp()">
+        <span style="font-size:20px;">＋</span> Add a person not in your list
+      </button>
+      <div class="add-person-form" id="add-person-form-rsvp">
+        <div class="input-row" style="margin-bottom:8px;">
+          <input type="text" id="add-person-name-rsvp" placeholder="Full name" />
+          <input type="email" id="add-person-email-rsvp" placeholder="Email address" />
+          <button class="btn btn-secondary btn-sm" onclick="addPersonAndSelectRsvp()">Add</button>
+        </div>
+      </div>
+      <div class="invite-selected-summary" id="invite-rsvp-summary"></div>
+    </div>
+    <div class="row">
+      <button class="btn btn-primary" onclick="sendRsvpInvites()">Send Invites →</button>
+    </div>
+  </div>
+
+  <!-- ========== RSVP RESPONSE VIEW ========== -->
+  <div class="view" id="view-rsvp">
+    <button class="btn btn-ghost btn-sm" onclick="goView('view-home')" style="margin-bottom: 24px;">← Back</button>
+    <div id="rsvp-view-name" class="view-title"></div>
+    <div id="rsvp-view-desc" class="view-sub"></div>
+
+    <div class="card">
+      <div class="card-label">When</div>
+      <div class="rsvp-date-display">📅 <span id="rsvp-view-date"></span></div>
+      <div class="rsvp-time-display" id="rsvp-view-time"></div>
+    </div>
+
+    <div class="card" id="rsvp-response-card">
+      <div class="card-label">Your Name</div>
+      <input type="text" id="rsvp-voter-name" placeholder="Enter your name" style="margin-bottom:16px;" />
+      <div class="card-label">Are you in?</div>
+      <div class="rsvp-btn-grid">
+        <button class="rsvp-btn yes" id="rsvp-yes-btn" onclick="selectRsvp('yes')">
+          <span class="rsvp-icon">✅</span> I'm In!
+        </button>
+        <button class="rsvp-btn no" id="rsvp-no-btn" onclick="selectRsvp('no')">
+          <span class="rsvp-icon">❌</span> Can't Make It
+        </button>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="submitRsvp()">Submit →</button>
+  </div>
+
+  <!-- ========== RSVP DASHBOARD ========== -->
+  <div class="view" id="view-rsvp-dash">
+    <button class="btn btn-ghost btn-sm" onclick="goView('view-home')" style="margin-bottom: 24px;">← Back</button>
+    <div id="rsvp-dash-name" class="view-title"></div>
+    <div id="rsvp-dash-desc" class="view-sub"></div>
+
+    <div class="card">
+      <div class="card-label">When</div>
+      <div class="rsvp-date-display">📅 <span id="rsvp-dash-date"></span></div>
+      <div class="rsvp-time-display" id="rsvp-dash-time"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">RSVPs</div>
+      <div class="rsvp-results">
+        <div class="rsvp-result-box yes-box">
+          <div class="rsvp-result-num" id="rsvp-dash-yes-count">0</div>
+          <div class="rsvp-result-label">Going</div>
+          <div class="rsvp-names" id="rsvp-dash-yes-names"></div>
+        </div>
+        <div class="rsvp-result-box no-box">
+          <div class="rsvp-result-num" id="rsvp-dash-no-count">0</div>
+          <div class="rsvp-result-label">Can't Make It</div>
+          <div class="rsvp-names" id="rsvp-dash-no-names"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Invited (<span id="rsvp-dash-invited-count">0</span>)</div>
+      <div id="rsvp-dash-invited-list"></div>
+    </div>
+    <div style="margin-top:4px;">
+      <button class="btn btn-secondary btn-sm" onclick="inviteMoreFriends('rsvp')">＋ Invite Friends</button>
+    </div>
+  </div>
+
+  <!-- ========== VOTE VIEW ========== -->
+  <div class="view" id="view-vote">
+    <button class="btn btn-ghost btn-sm" onclick="goView('view-home')" style="margin-bottom: 24px;">← Back</button>
+    <div id="vote-event-name" class="view-title"></div>
+    <div id="vote-event-desc" class="view-sub"></div>
+
+    <!-- Voter name -->
+    <div class="card" id="voter-name-card">
+      <div class="card-label">Your Name</div>
+      <div class="input-row">
+        <input type="text" id="voter-name" placeholder="Enter your name to vote" />
+      </div>
+    </div>
+
+    <!-- Dates -->
+    <div class="card">
+      <div class="card-label">Which dates work for you? (Select all that apply)</div>
+      <div class="vote-grid" id="vote-grid"></div>
+    </div>
+
+    <button class="btn btn-primary" onclick="submitVotes()">Submit My Availability →</button>
+  </div>
+
+  <!-- ========== EVENT DASHBOARD ========== -->
+  <div class="view" id="view-dashboard">
+    <button class="btn btn-ghost btn-sm" onclick="goView('view-home')" style="margin-bottom: 24px;">← Back</button>
+    <div id="dash-event-name" class="view-title"></div>
+    <div id="dash-event-desc" class="view-sub"></div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="dashTab('results', this)">Results</button>
+      <button class="tab" onclick="dashTab('share', this)">Share</button>
+      <button class="tab" onclick="dashTab('voters', this)">Voters</button>
+    </div>
+
+    <!-- RESULTS TAB -->
+    <div id="dash-results">
+      <div style="margin-bottom:20px;">
+        <button class="btn btn-secondary btn-sm" onclick="inviteMoreFriends('find')">＋ Invite Friends</button>
+      </div>
+      <div id="result-banner-wrap"></div>
+      <div class="card">
+        <div class="card-label">Availability Overview</div>
+        <div class="avail-grid" id="avail-grid"></div>
+        <div class="text-muted mt-16" id="avail-hint"></div>
+      </div>
+      <div class="mt-24" id="decide-btn-wrap"></div>
+    </div>
+
+    <!-- SHARE TAB -->
+    <div id="dash-share" style="display:none;">
+      <div class="card">
+        <div class="card-label">Voting Link</div>
+        <p class="text-muted" style="margin-bottom: 16px;">Share this link so people can pick their available dates.</p>
+        <div class="share-box">
+          <div class="share-url" id="share-url"></div>
+          <button class="btn btn-secondary btn-sm" onclick="copyLink()">Copy</button>
+        </div>
+        <span class="copy-feedback" id="copy-feedback">✓ Copied!</span>
+      </div>
+      <div class="card">
+        <div class="card-label">Invited Guests</div>
+        <div id="invited-guests"></div>
+      </div>
+    </div>
+
+    <!-- VOTERS TAB -->
+    <div id="dash-voters" style="display:none;">
+      <div class="card">
+        <div class="card-label">Who's Responded</div>
+        <div id="voters-list"></div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========== SETTINGS VIEW ========== -->
+  <div class="view" id="view-settings">
+    <button class="btn btn-ghost btn-sm" onclick="goView('view-home')" style="margin-bottom: 24px;">← Back</button>
+    <div class="view-title">Friends</div>
+    <div class="view-sub">Save your people so you can add them instantly to any event.</div>
+
+    <div class="card">
+      <div class="card-label">Add a Friend</div>
+      <div class="settings-add-row">
+        <input type="text" id="friend-name-input" placeholder="Full name" />
+        <input type="email" id="friend-email-input" placeholder="Email address" onkeydown="if(event.key==='Enter') saveFriend()" />
+        <button class="btn btn-primary" onclick="saveFriend()">＋ Add</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Your Friends (<span id="friend-count">0</span>)</div>
+      <div class="friend-list" id="friend-list">
+        <div class="text-muted">No friends added yet.</div>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- ========== STATS VIEW ========== -->
+  <div class="view" id="view-stats">
+    <button class="btn btn-ghost btn-sm" onclick="goView('view-home')" style="margin-bottom: 24px;">← Back</button>
+    <div style="display:flex; align-items:baseline; gap:16px; margin-bottom:32px;">
+      <div class="view-title" style="margin-bottom:0;">Leaderboard</div>
+      <div id="year-tabs" style="display:flex; gap:16px; flex-wrap:wrap;"></div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:40px;" class="lb-two-col">
+
+      <!-- ATTENDED -->
+      <div>
+        <div class="card-label" style="margin-bottom:16px;">🙋 Most Events Attended</div>
+        <table class="leaderboard-table" id="lb-attended-table">
+          <thead><tr>
+            <th class="lb-rank">#</th>
+            <th class="lb-name">Person</th>
+            <th class="lb-num">Events</th>
+          </tr></thead>
+          <tbody id="lb-attended-body"></tbody>
+        </table>
+        <div id="lb-attended-empty" class="text-muted" style="display:none; padding:20px 0;">No data yet.</div>
+      </div>
+
+      <!-- ORGANISED -->
+      <div>
+        <div class="card-label" style="margin-bottom:16px;">🎯 Most Events Organised</div>
+        <table class="leaderboard-table" id="lb-organised-table">
+          <thead><tr>
+            <th class="lb-rank">#</th>
+            <th class="lb-name">Person</th>
+            <th class="lb-num">Events</th>
+          </tr></thead>
+          <tbody id="lb-organised-body"></tbody>
+        </table>
+        <div id="lb-organised-empty" class="text-muted" style="display:none; padding:20px 0;">No data yet.</div>
+      </div>
+
+    </div>
+  </div>
+
+
+</div>
+
+<script>
+// ================================================
+// DATA STORE
+// ================================================
+let store = {
+  events: {},
+  currentUser: 'You (Organizer)'
+};
+
+// Persist to localStorage
+function save() {
+  localStorage.setItem('timtime_store', JSON.stringify(store));
+}
+function load() {
+  const raw = localStorage.getItem('timtime_store');
+  if (raw) {
+    try { store = JSON.parse(raw); } catch(e) {}
+  }
+}
+load();
+
+// ================================================
+// ROUTING
+// ================================================
+let currentView = 'view-home';
+function goView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  currentView = id;
+  if (id === 'view-home') renderHome();
+  if (id === 'view-settings') renderFriendsList();
+  if (id === 'view-stats') renderStats();
+  if (id === 'view-create-rsvp') renderRsvpCalendar();
+}
+
+// ================================================
+// HOME
+// ================================================
+function renderHome() {
+  const confirmedList = document.getElementById('confirmed-events-list');
+  const pendingList   = document.getElementById('pending-events-list');
+  const allEvents     = Object.values(store.events);
+
+  function isConfirmed(ev) {
+    if (ev.type === 'rsvp') return !!ev.date; // RSVP events always have a set date
+    return !!ev.decidedDate;                   // Find-a-date: organiser confirmed a date
+  }
+
+  function eventCardHTML(ev) {
+    const isRsvp = ev.type === 'rsvp';
+    const rsvps  = Object.values(ev.rsvps || {});
+    const votes  = Object.values(ev.votes || {});
+    const inviteCount = (ev.invites || []).length;
+    const responded   = isRsvp ? rsvps.length : votes.length;
+
+    let statusLabel, statusClass;
+    if (isRsvp) {
+      const going = rsvps.filter(r => r.response === 'yes').length;
+      statusLabel = `${going} going`;
+      statusClass = going > 0 ? 'status-open' : 'status-pending';
+    } else if (ev.decidedDate) {
+      statusLabel = 'Date Set!';
+      statusClass = 'status-decided';
+    } else {
+      statusLabel = `${responded}/${inviteCount || '?'} responded`;
+      statusClass = 'status-open';
+    }
+
+    const emojis = ['🏕️','🎉','🍕','🎬','🎂','⛷️','🌊','🏃','🍷','🎸'];
+    const emoji  = emojis[ev.id.charCodeAt(0) % emojis.length];
+    const action = ev.isInvited
+      ? (isRsvp ? `openRsvpVote(store.events['${ev.id}'])` : `openVoteView(store.events['${ev.id}'])`)
+      : (isRsvp ? `openRsvpDash(store.events['${ev.id}'])` : `openEvent('${ev.id}')`);
+
+    let detail;
+    if (isRsvp) {
+      detail = ev.date ? formatDate(ev.date) + (ev.time ? ' · ' + formatTime(ev.time) : '') : '';
+    } else if (ev.decidedDate) {
+      detail = formatDate(ev.decidedDate);
+    } else {
+      detail = `${(ev.dates || []).length} date options · ${responded} of ${inviteCount || '?'} responded`;
+    }
+
+    return `<div class="event-card" onclick="${action}">
+      <div class="event-icon">${emoji}</div>
+      <div class="event-meta">
+        <div class="event-name">${ev.name}</div>
+        <div class="event-detail">${detail}</div>
+      </div>
+      <span class="event-status ${statusClass}">${statusLabel}</span>
+    </div>`;
+  }
+
+  const confirmed = allEvents.filter(isConfirmed);
+  const pending   = allEvents.filter(ev => !isConfirmed(ev));
+
+  confirmedList.innerHTML = confirmed.length
+    ? confirmed.map(eventCardHTML).join('')
+    : `<div class="empty-state" style="padding: 32px 20px;"><div class="emoji">📅</div><p>No confirmed events yet. Create one to get started!</p></div>`;
+
+  pendingList.innerHTML = pending.length
+    ? pending.map(eventCardHTML).join('')
+    : `<div style="padding: 16px 0; color: var(--muted); font-size: 14px;">No pending events.</div>`;
+}
+
+
+// ================================================
+// EVENT TYPE PICKER
+// ================================================
+function startCreateEvent(type) {
+  if (type === 'find') {
+    goView('view-create');
+  } else {
+    rsvpSelectedDate = null;
+    document.getElementById('rsvp-event-name').value = '';
+    document.getElementById('rsvp-event-desc').value = '';
+    document.getElementById('rsvp-time').value = '';
+    document.getElementById('rsvp-date-chip').innerHTML = '';
+    document.getElementById('rsvp-no-date-hint').style.display = 'block';
+    renderRsvpCalendar();
+    goView('view-create-rsvp');
+  }
+}
+
+// ================================================
+// RSVP CALENDAR (single date select)
+// ================================================
+let rsvpCalState = { year: new Date().getFullYear(), month: new Date().getMonth() };
+let rsvpSelectedDate = null;
+
+function renderRsvpCalendar() {
+  const cal = document.getElementById('rsvp-calendar');
+  if (!cal) return;
+  const { year, month } = rsvpCalState;
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const dayNames = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  let html = `<div class="cal-header">
+    <button class="cal-nav" onclick="rsvpCalNav(-1)">‹</button>
+    <div class="cal-month">${monthNames[month]} ${year}</div>
+    <button class="cal-nav" onclick="rsvpCalNav(1)">›</button>
+  </div><div class="cal-grid">
+    ${dayNames.map(d => `<div class="cal-day-name">${d}</div>`).join('')}
+    ${Array(firstDay).fill('<div class="cal-day empty"></div>').join('')}`;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(year, month, d);
+    const isPast = date < today;
+    const key = dateKey(date);
+    const isSel = rsvpSelectedDate === key;
+    const isToday = date.toDateString() === today.toDateString();
+    html += `<div class="cal-day${isPast?' past':''}${isSel?' selected':''}${isToday?' today':''}" onclick="selectRsvpDate('${key}')">${d}</div>`;
+  }
+  html += '</div>';
+  cal.innerHTML = html;
+}
+
+function rsvpCalNav(dir) {
+  rsvpCalState.month += dir;
+  if (rsvpCalState.month < 0) { rsvpCalState.month = 11; rsvpCalState.year--; }
+  if (rsvpCalState.month > 11) { rsvpCalState.month = 0; rsvpCalState.year++; }
+  renderRsvpCalendar();
+}
+
+function selectRsvpDate(key) {
+  rsvpSelectedDate = key;
+  renderRsvpCalendar();
+  const chip = document.getElementById('rsvp-date-chip');
+  const hint = document.getElementById('rsvp-no-date-hint');
+  chip.innerHTML = `<div class="date-chip" style="cursor:default;">📅 ${formatDate(key)}</div>`;
+  hint.style.display = 'none';
+}
+
+// ================================================
+// RSVP INVITES (mirrors main invite logic)
+// ================================================
+let rsvpInvites = [];
+
+function acInputRsvp() {
+  const input = document.getElementById('rsvp-invite-email');
+  const dropdown = document.getElementById('rsvp-ac-dropdown');
+  const query = input.value.trim().toLowerCase();
+  if (!query) { dropdown.classList.remove('open'); return; }
+  const matches = getFriends().filter(f =>
+    f.name.toLowerCase().includes(query) || f.email.toLowerCase().includes(query)
+  );
+  if (!matches.length) { dropdown.classList.remove('open'); return; }
+  dropdown.innerHTML = matches.map(f => {
+    const ini = f.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const h = (f.email.charCodeAt(0)*37 + f.email.charCodeAt(1)*13) % 360;
+    return `<div class="ac-item" onclick="acSelectRsvp('${f.name}','${f.email}')">
+      <div class="ac-avatar" style="background:hsl(${h},55%,48%)">${ini}</div>
+      <div class="ac-info"><div class="ac-name">${f.name}</div><div class="ac-email">${f.email}</div></div>
+    </div>`;
+  }).join('');
+  dropdown.classList.add('open');
+}
+
+function acKeydownRsvp(e) {
+  if (e.key === 'Enter') { addInviteFromInputRsvp(); }
+  else if (e.key === 'Escape') document.getElementById('rsvp-ac-dropdown').classList.remove('open');
+}
+
+function acSelectRsvp(name, email) {
+  document.getElementById('rsvp-ac-dropdown').classList.remove('open');
+  document.getElementById('rsvp-invite-email').value = '';
+  addRsvpInvitePerson(name, email);
+}
+
+function addInviteFromInputRsvp() {
+  const input = document.getElementById('rsvp-invite-email');
+  const val = input.value.trim();
+  if (!val) return;
+  document.getElementById('rsvp-ac-dropdown').classList.remove('open');
+  if (val.includes('@')) {
+    const friend = getFriends().find(f => f.email.toLowerCase() === val.toLowerCase());
+    addRsvpInvitePerson(friend ? friend.name : val, val);
+  } else {
+    const friend = getFriends().find(f => f.name.toLowerCase() === val.toLowerCase());
+    if (friend) addRsvpInvitePerson(friend.name, friend.email);
+    else { alert('Select a friend from the list, or enter a full email address.'); return; }
+  }
+  input.value = '';
+}
+
+function addRsvpInvitePerson(name, email) {
+  if (rsvpInvites.some(i => i.email.toLowerCase() === email.toLowerCase())) return;
+  rsvpInvites.push({ name, email });
+  renderRsvpInvites();
+}
+
+function removeRsvpInvite(email) {
+  rsvpInvites = rsvpInvites.filter(i => i.email !== email);
+  renderRsvpInvites();
+}
+
+function renderRsvpInvites() {
+  const list = document.getElementById('rsvp-invite-list');
+  const hint = document.getElementById('rsvp-no-invites-hint');
+  hint.style.display = rsvpInvites.length ? 'none' : 'block';
+  list.innerHTML = rsvpInvites.map(i => {
+    const ini = i.name.includes('@') ? i.name[0].toUpperCase() : i.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const h = (i.email.charCodeAt(0)*37 + (i.email.charCodeAt(1)||0)*13) % 360;
+    return `<div class="invite-tag">
+      <span style="width:22px;height:22px;border-radius:50%;background:hsl(${h},55%,48%);color:white;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${ini}</span>
+      ${i.name !== i.email ? `<strong>${i.name}</strong><span style="color:var(--muted);font-size:11px">${i.email}</span>` : i.email}
+      <span class="rm" onclick="removeRsvpInvite('${i.email}')">×</span>
+    </div>`;
+  }).join('');
+}
+
+// ================================================
+// CREATE RSVP EVENT
+// ================================================
+function createRsvpEvent() {
+  const name = document.getElementById('rsvp-event-name').value.trim();
+  if (!name) return alert('Please enter an event name.');
+  if (!rsvpSelectedDate) return alert('Please select a date.');
+
+  const time = document.getElementById('rsvp-time').value;
+  const id = slugify(name) + '-' + Math.random().toString(36).slice(2,6);
+  const event = {
+    id, name,
+    desc: document.getElementById('rsvp-event-desc').value.trim(),
+    type: 'rsvp',
+    date: rsvpSelectedDate,
+    time: time || null,
+    invites: [],
+    rsvps: {},
+    isInvited: false,
+    createdAt: Date.now()
+  };
+  store.events[id] = event;
+  save();
+
+  // Reset form
+  rsvpSelectedDate = null;
+  document.getElementById('rsvp-event-name').value = '';
+  document.getElementById('rsvp-event-desc').value = '';
+
+  openInviteView(id, 'rsvp');
+}
+
+// ================================================
+// RSVP RESPONSE VIEW
+// ================================================
+let rsvpSelection = null;
+
+function openRsvpVote(ev) {
+  document.getElementById('rsvp-view-name').textContent = ev.name;
+  document.getElementById('rsvp-view-desc').textContent = ev.desc || 'Let the organiser know if you can make it.';
+  document.getElementById('rsvp-view-date').textContent = formatDate(ev.date);
+  document.getElementById('rsvp-view-time').textContent = ev.time ? '🕐 ' + formatTime(ev.time) : '';
+  document.getElementById('rsvp-voter-name').value = '';
+  rsvpSelection = null;
+  document.getElementById('rsvp-yes-btn').classList.remove('selected');
+  document.getElementById('rsvp-no-btn').classList.remove('selected');
+  document.getElementById('view-rsvp').dataset.eventId = ev.id;
+  goView('view-rsvp');
+}
+
+function selectRsvp(choice) {
+  rsvpSelection = choice;
+  document.getElementById('rsvp-yes-btn').classList.toggle('selected', choice === 'yes');
+  document.getElementById('rsvp-no-btn').classList.toggle('selected', choice === 'no');
+}
+
+function submitRsvp() {
+  const evId = document.getElementById('view-rsvp').dataset.eventId;
+  const name = document.getElementById('rsvp-voter-name').value.trim();
+  if (!name) return alert('Please enter your name.');
+  if (!rsvpSelection) return alert('Please select yes or no.');
+
+  const ev = store.events[evId];
+  ev.rsvps[name] = { name, response: rsvpSelection, ts: Date.now() };
+  save();
+  rsvpSelection = null;
+  alert(`Thanks, ${name}! Your RSVP has been saved.`);
+  openRsvpDash(ev);
+}
+
+// ================================================
+// RSVP DASHBOARD
+// ================================================
+let rsvpDashEventId = null;
+function openRsvpDash(ev) {
+  rsvpDashEventId = ev.id;
+  document.getElementById('rsvp-dash-name').textContent = ev.name;
+  document.getElementById('rsvp-dash-desc').textContent = ev.desc || 'RSVP dashboard.';
+  document.getElementById('rsvp-dash-date').textContent = formatDate(ev.date);
+  document.getElementById('rsvp-dash-time').textContent = ev.time ? '🕐 ' + formatTime(ev.time) : '';
+
+  const rsvps = Object.values(ev.rsvps || {});
+  const yes = rsvps.filter(r => r.response === 'yes');
+  const no  = rsvps.filter(r => r.response === 'no');
+
+  document.getElementById('rsvp-dash-yes-count').textContent = yes.length;
+  document.getElementById('rsvp-dash-no-count').textContent  = no.length;
+  document.getElementById('rsvp-dash-yes-names').textContent = yes.map(r=>r.name).join(', ');
+  document.getElementById('rsvp-dash-no-names').textContent  = no.map(r=>r.name).join(', ');
+
+  const invited = ev.invites || [];
+  document.getElementById('rsvp-dash-invited-count').textContent = invited.length;
+  document.getElementById('rsvp-dash-invited-list').innerHTML = invited.map(email => {
+    const friend = (store.friends || []).find(f => f.email === email);
+    const displayName = friend ? friend.name : email;
+    const rsvp = rsvps.find(r => r.name === displayName || r.name === email || r.email === email);
+    const h = (email.charCodeAt(0)*37 + (email.charCodeAt(1)||0)*13) % 360;
+    const ini = displayName.includes('@') ? displayName[0].toUpperCase() : displayName.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const statusLabel = rsvp ? (rsvp.response === 'yes' ? '✅ Going' : "❌ Can't make it") : 'Pending';
+    const statusClass = rsvp ? (rsvp.response === 'yes' ? 'voted' : 'declined') : 'pending';
+    return `<div class="invited-person-row">
+      <div style="width:34px;height:34px;border-radius:50%;background:hsl(${h},55%,48%);color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${ini}</div>
+      <div style="flex:1;font-weight:600;font-size:14px;">${displayName}</div>
+      <span class="invited-status ${statusClass}">${statusLabel}</span>
+      <button class="reinvite-btn" onclick="reInvite('${email}', '${displayName.replace(/'/g, "\'")}')">Re-invite</button>
+    </div>`;
+  }).join('');
+
+  goView('view-rsvp-dash');
+}
+
+function formatTime(t) {
+  const [h, m] = t.split(':').map(Number);
+  const ampm = h >= 12 ? 'pm' : 'am';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
+
+// ================================================
+// INVITE MORE FROM DASHBOARD
+// ================================================
+function inviteMoreFriends(type) {
+  const id = type === 'find' ? dashEventId : rsvpDashEventId;
+  if (!id) return;
+  const ev = store.events[id];
+  if (!ev) return;
+
+  // Pre-select already invited friends
+  selectedInvites = {};
+  (ev.invites || []).forEach(email => {
+    const friend = getFriends().find(f => f.email === email);
+    if (friend) selectedInvites[email] = friend;
+  });
+
+  openInviteView(id, type);
+}
+
+
+// ================================================
+// RE-INVITE
+// ================================================
+function reInvite(email, name) {
+  // For now just a friendly alert — when email is wired up this sends the invite
+  alert(`Re-invite sent to ${name}!\n\n(In the live version this would send them an email with the event link.)`);
+}
+
+// ================================================
+// CALENDAR
+// ================================================
+let calState = { year: new Date().getFullYear(), month: new Date().getMonth() };
+let selectedDates = [];
+
+function renderCalendar() {
+  const cal = document.getElementById('main-calendar');
+  const { year, month } = calState;
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const dayNames = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  let html = `<div class="cal-header">
+    <button class="cal-nav" onclick="calNav(-1)">‹</button>
+    <div class="cal-month">${monthNames[month]} ${year}</div>
+    <button class="cal-nav" onclick="calNav(1)">›</button>
+  </div>
+  <div class="cal-grid">
+    ${dayNames.map(d => `<div class="cal-day-name">${d}</div>`).join('')}
+    ${Array(firstDay).fill('<div class="cal-day empty"></div>').join('')}`;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(year, month, d);
+    const isPast = date < today;
+    const key = dateKey(date);
+    const isSel = selectedDates.includes(key);
+    const isToday = date.toDateString() === today.toDateString();
+    html += `<div class="cal-day ${isPast?'past':''} ${isSel?'selected':''} ${isToday?'today':''}"
+      onclick="toggleDate('${key}')">${d}</div>`;
+  }
+  html += '</div>';
+  cal.innerHTML = html;
+}
+
+function calNav(dir) {
+  calState.month += dir;
+  if (calState.month < 0) { calState.month = 11; calState.year--; }
+  if (calState.month > 11) { calState.month = 0; calState.year++; }
+  renderCalendar();
+}
+
+function dateKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+
+function formatDate(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  const date = new Date(y, m-1, d);
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' });
+}
+
+function toggleDate(key) {
+  const idx = selectedDates.indexOf(key);
+  if (idx > -1) selectedDates.splice(idx, 1);
+  else selectedDates.push(key);
+  selectedDates.sort();
+  renderCalendar();
+  renderChips();
+}
+
+function renderChips() {
+  const chips = document.getElementById('selected-chips');
+  const count = document.getElementById('sel-count');
+  const hint = document.getElementById('no-dates-hint');
+  count.textContent = selectedDates.length;
+  hint.style.display = selectedDates.length ? 'none' : 'block';
+  chips.innerHTML = selectedDates.map(k =>
+    `<div class="date-chip" onclick="toggleDate('${k}')">
+      ${formatDate(k)} <span class="remove">×</span>
+    </div>`
+  ).join('');
+}
+
+// ================================================
+// FRIENDS (SETTINGS)
+// ================================================
+function getFriends() {
+  return store.friends || [];
+}
+function saveFriend() {
+  const nameInput = document.getElementById('friend-name-input');
+  const emailInput = document.getElementById('friend-email-input');
+  const name = nameInput.value.trim();
+  const email = emailInput.value.trim();
+  if (!name) return alert('Please enter a name.');
+  if (!email || !email.includes('@')) return alert('Please enter a valid email.');
+  if (!store.friends) store.friends = [];
+  if (store.friends.some(f => f.email.toLowerCase() === email.toLowerCase())) {
+    return alert('That email is already in your friends list.');
+  }
+  store.friends.push({ name, email });
+  save();
+  nameInput.value = '';
+  emailInput.value = '';
+  renderFriendsList();
+}
+function deleteFriend(email) {
+  store.friends = (store.friends || []).filter(f => f.email !== email);
+  save();
+  renderFriendsList();
+}
+function renderFriendsList() {
+  const list = document.getElementById('friend-list');
+  const count = document.getElementById('friend-count');
+  const friends = getFriends();
+  count.textContent = friends.length;
+  if (!friends.length) {
+    list.innerHTML = '<div class="text-muted">No friends added yet.</div>';
+    return;
+  }
+  list.innerHTML = friends.map(f => {
+    const initials = f.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+    const hue = (f.email.charCodeAt(0) * 37 + f.email.charCodeAt(1) * 13) % 360;
+    return `<div class="friend-card">
+      <div class="friend-avatar" style="background: hsl(${hue},55%,48%)">${initials}</div>
+      <div class="friend-info">
+        <div class="friend-name">${f.name}</div>
+        <div class="friend-email">${f.email}</div>
+      </div>
+      <button class="friend-del" onclick="deleteFriend('${f.email}')" title="Remove">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// ================================================
+// AUTOCOMPLETE
+// ================================================
+let acFocusedIndex = -1;
+
+function acInput() {
+  const input = document.getElementById('invite-email');
+  const dropdown = document.getElementById('ac-dropdown');
+  const query = input.value.trim().toLowerCase();
+  acFocusedIndex = -1;
+
+  if (!query) { dropdown.classList.remove('open'); return; }
+
+  const friends = getFriends();
+  const matches = friends.filter(f =>
+    f.name.toLowerCase().includes(query) ||
+    f.email.toLowerCase().includes(query)
+  );
+
+  if (!matches.length) { dropdown.classList.remove('open'); return; }
+
+  dropdown.innerHTML = matches.map((f, i) => {
+    const initials = f.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+    const hue = (f.email.charCodeAt(0) * 37 + f.email.charCodeAt(1) * 13) % 360;
+    return `<div class="ac-item" data-email="${f.email}" data-name="${f.name}" onclick="acSelect('${f.name}', '${f.email}')">
+      <div class="ac-avatar" style="background: hsl(${hue},55%,48%)">${initials}</div>
+      <div class="ac-info">
+        <div class="ac-name">${f.name}</div>
+        <div class="ac-email">${f.email}</div>
+      </div>
+    </div>`;
+  }).join('');
+  dropdown.classList.add('open');
+}
+
+function acKeydown(e) {
+  const dropdown = document.getElementById('ac-dropdown');
+  const items = dropdown.querySelectorAll('.ac-item');
+  if (!dropdown.classList.contains('open')) {
+    if (e.key === 'Enter') addInviteFromInput();
+    return;
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    acFocusedIndex = Math.min(acFocusedIndex + 1, items.length - 1);
+    items.forEach((el, i) => el.classList.toggle('focused', i === acFocusedIndex));
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    acFocusedIndex = Math.max(acFocusedIndex - 1, 0);
+    items.forEach((el, i) => el.classList.toggle('focused', i === acFocusedIndex));
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (acFocusedIndex >= 0 && items[acFocusedIndex]) {
+      const el = items[acFocusedIndex];
+      acSelect(el.dataset.name, el.dataset.email);
+    } else {
+      addInviteFromInput();
+    }
+  } else if (e.key === 'Escape') {
+    dropdown.classList.remove('open');
+  }
+}
+
+function acSelect(name, email) {
+  document.getElementById('ac-dropdown').classList.remove('open');
+  document.getElementById('invite-email').value = '';
+  addInvitePerson(name, email);
+}
+
+function closeDropdownOnClickOutside(e) {
+  const wrap = document.querySelector('.autocomplete-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById('ac-dropdown').classList.remove('open');
+  }
+}
+document.addEventListener('click', closeDropdownOnClickOutside);
+
+// ================================================
+// INVITES
+// ================================================
+// Each invite is { name, email }
+let invites = [];
+
+function addInviteFromInput() {
+  const input = document.getElementById('invite-email');
+  const val = input.value.trim();
+  if (!val) return;
+  document.getElementById('ac-dropdown').classList.remove('open');
+  // Check if it looks like an email
+  if (val.includes('@')) {
+    // Try to match a friend by email first
+    const friend = getFriends().find(f => f.email.toLowerCase() === val.toLowerCase());
+    addInvitePerson(friend ? friend.name : val, val);
+  } else {
+    // Try to match a friend by name
+    const friend = getFriends().find(f => f.name.toLowerCase() === val.toLowerCase());
+    if (friend) {
+      addInvitePerson(friend.name, friend.email);
+    } else {
+      alert('Please select a friend from the list, or enter a full email address.');
+      return;
+    }
+  }
+  input.value = '';
+}
+
+function addInvitePerson(name, email) {
+  if (invites.some(i => i.email.toLowerCase() === email.toLowerCase())) return;
+  invites.push({ name, email });
+  renderInvites();
+}
+
+function removeInvite(email) {
+  invites = invites.filter(i => i.email !== email);
+  renderInvites();
+}
+function renderInvites() {
+  const list = document.getElementById('invite-list');
+  const hint = document.getElementById('no-invites-hint');
+  hint.style.display = invites.length ? 'none' : 'block';
+  list.innerHTML = invites.map(i => {
+    const initials = i.name.includes('@') ? i.name[0].toUpperCase() : i.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const hue = (i.email.charCodeAt(0) * 37 + (i.email.charCodeAt(1)||0) * 13) % 360;
+    return `<div class="invite-tag">
+      <span style="width:22px;height:22px;border-radius:50%;background:hsl(${hue},55%,48%);color:white;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${initials}</span>
+      ${i.name !== i.email ? `<strong>${i.name}</strong> <span style="color:var(--muted);font-size:11px">${i.email}</span>` : i.email}
+      <span class="rm" onclick="removeInvite('${i.email}')">×</span>
+    </div>`;
+  }).join('');
+}
+
+// ================================================
+// CREATE EVENT — step 1: save event, go to invite screen
+// ================================================
+let pendingEventId = null; // id of event just created, waiting for invites
+
+function createTimEvent() {
+  const name = document.getElementById('event-name').value.trim();
+  if (!name) return alert('Please enter an event name.');
+  if (selectedDates.length < 1) return alert('Please select at least one potential date.');
+
+  const id = slugify(name) + '-' + Math.random().toString(36).slice(2,6);
+  const event = {
+    id, name,
+    desc: document.getElementById('event-desc').value.trim(),
+    dates: [...selectedDates],
+    invites: [],
+    votes: {},
+    isInvited: false,
+    decidedDate: null,
+    createdAt: Date.now()
+  };
+  store.events[id] = event;
+  save();
+  pendingEventId = id;
+
+  // Reset form
+  selectedDates = [];
+  document.getElementById('event-name').value = '';
+  document.getElementById('event-desc').value = '';
+
+  openInviteView(id, 'find');
+}
+
+// ================================================
+// INVITE TOGGLE VIEW (shared for find + rsvp)
+// ================================================
+let selectedInvites = {};  // email -> { name, email }
+
+function openInviteView(eventId, type) {
+  pendingEventId = eventId;
+  const ev = store.events[eventId];
+  selectedInvites = {};
+
+  const titleEl = document.getElementById(type === 'find' ? 'invite-view-title' : 'invite-rsvp-view-title');
+  if (titleEl) titleEl.textContent = ev.name;
+
+  renderInviteFriendsList(type);
+  goView(type === 'find' ? 'view-invite' : 'view-invite-rsvp');
+}
+
+function renderInviteFriendsList(type) {
+  const listId = type === 'find' ? 'invite-friends-list' : 'invite-rsvp-friends-list';
+  const summaryId = type === 'find' ? 'invite-summary' : 'invite-rsvp-summary';
+  const list = document.getElementById(listId);
+  const summary = document.getElementById(summaryId);
+  const friends = getFriends();
+
+  if (!friends.length) {
+    list.innerHTML = '<div class="text-muted" style="padding:8px 0 16px;">No friends saved yet. Use the Add option below.</div>';
+  } else {
+    list.innerHTML = friends.map(f => {
+      const isSelected = !!selectedInvites[f.email];
+      const h = (f.email.charCodeAt(0)*37 + f.email.charCodeAt(1)*13) % 360;
+      const ini = f.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+      return `<div class="invite-friend-row${isSelected?' selected':''}" onclick="toggleInviteFriend('${f.email}','${f.name}','${type}')">
+        <div class="invite-toggle">${isSelected?'✓':''}</div>
+        <div style="width:36px;height:36px;border-radius:50%;background:hsl(${h},55%,48%);color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0">${ini}</div>
+        <div class="invite-friend-info">
+          <div class="invite-friend-name">${f.name}</div>
+          <div class="invite-friend-email">${f.email}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  updateInviteSummary(type);
+}
+
+function toggleInviteFriend(email, name, type) {
+  if (selectedInvites[email]) {
+    delete selectedInvites[email];
+  } else {
+    selectedInvites[email] = { name, email };
+  }
+  renderInviteFriendsList(type);
+}
+
+function updateInviteSummary(type) {
+  const summaryId = type === 'find' ? 'invite-summary' : 'invite-rsvp-summary';
+  const summary = document.getElementById(summaryId);
+  const count = Object.keys(selectedInvites).length;
+  summary.innerHTML = count
+    ? `<strong>${count}</strong> friend${count===1?'':'s'} selected`
+    : 'No one selected yet.';
+}
+
+function toggleAddPersonForm() {
+  const form = document.getElementById('add-person-form');
+  form.classList.toggle('open');
+}
+
+function toggleAddPersonFormRsvp() {
+  const form = document.getElementById('add-person-form-rsvp');
+  form.classList.toggle('open');
+}
+
+function addPersonAndSelect() {
+  const name = document.getElementById('add-person-name').value.trim();
+  const email = document.getElementById('add-person-email').value.trim();
+  if (!name) return alert('Please enter a name.');
+  if (!email.includes('@')) return alert('Please enter a valid email.');
+  // Save to friends list
+  if (!store.friends) store.friends = [];
+  if (!store.friends.some(f => f.email.toLowerCase() === email.toLowerCase())) {
+    store.friends.push({ name, email });
+    save();
+  }
+  selectedInvites[email] = { name, email };
+  document.getElementById('add-person-name').value = '';
+  document.getElementById('add-person-email').value = '';
+  document.getElementById('add-person-form').classList.remove('open');
+  renderInviteFriendsList('find');
+}
+
+function addPersonAndSelectRsvp() {
+  const name = document.getElementById('add-person-name-rsvp').value.trim();
+  const email = document.getElementById('add-person-email-rsvp').value.trim();
+  if (!name) return alert('Please enter a name.');
+  if (!email.includes('@')) return alert('Please enter a valid email.');
+  if (!store.friends) store.friends = [];
+  if (!store.friends.some(f => f.email.toLowerCase() === email.toLowerCase())) {
+    store.friends.push({ name, email });
+    save();
+  }
+  selectedInvites[email] = { name, email };
+  document.getElementById('add-person-name-rsvp').value = '';
+  document.getElementById('add-person-email-rsvp').value = '';
+  document.getElementById('add-person-form-rsvp').classList.remove('open');
+  renderInviteFriendsList('rsvp');
+}
+
+function sendInvites() {
+  if (!Object.keys(selectedInvites).length) return alert('Please select at least one person to invite.');
+  const ev = store.events[pendingEventId];
+  ev.invites = Object.values(selectedInvites).map(i => i.email);
+  save();
+  selectedInvites = {};
+  openEvent(pendingEventId);
+}
+
+function sendRsvpInvites() {
+  if (!Object.keys(selectedInvites).length) return alert('Please select at least one person to invite.');
+  const ev = store.events[pendingEventId];
+  ev.invites = Object.values(selectedInvites).map(i => i.email);
+  save();
+  selectedInvites = {};
+  openRsvpDash(ev);
+}
+
+function slugify(str) {
+  return str.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g,'').slice(0, 30);
+}
+
+// ================================================
+// OPEN EVENT (dashboard or vote)
+// ================================================
+function openEvent(id) {
+  const ev = store.events[id];
+  if (!ev) return;
+  openDashboard(ev);
+}
+
+// ================================================
+// VOTE VIEW
+// ================================================
+function openVoteView(ev) {
+  document.getElementById('vote-event-name').textContent = ev.name;
+  document.getElementById('vote-event-desc').textContent = ev.desc || 'Pick the dates that work for you.';
+  document.getElementById('voter-name').value = '';
+
+  const grid = document.getElementById('vote-grid');
+  // Show existing vote counts
+  let voteCounts = {};
+  ev.dates.forEach(d => { voteCounts[d] = 0; });
+  Object.values(ev.votes).forEach(v => {
+    v.dates.forEach(d => { voteCounts[d] = (voteCounts[d] || 0) + 1; });
+  });
+
+  grid.innerHTML = ev.dates.map(key =>
+    `<div class="vote-row" id="vr-${key}" onclick="toggleVote('${key}')">
+      <div class="vote-check" id="vc-${key}"></div>
+      <div class="vote-date-label">${formatDate(key)}</div>
+      <div class="vote-count-badge">${voteCounts[key]} voted</div>
+    </div>`
+  ).join('');
+
+  goView('view-vote');
+  document.getElementById('view-vote').dataset.eventId = ev.id;
+}
+
+let votedDates = [];
+function toggleVote(key) {
+  const idx = votedDates.indexOf(key);
+  const row = document.getElementById('vr-' + key);
+  const check = document.getElementById('vc-' + key);
+  if (idx > -1) {
+    votedDates.splice(idx, 1);
+    row.classList.remove('voted');
+    check.textContent = '';
+  } else {
+    votedDates.push(key);
+    row.classList.add('voted');
+    check.textContent = '✓';
+  }
+}
+
+function submitVotes() {
+  const evId = document.getElementById('view-vote').dataset.eventId;
+  const name = document.getElementById('voter-name').value.trim();
+  if (!name) return alert('Please enter your name.');
+  if (!votedDates.length) return alert('Please select at least one date.');
+
+  const ev = store.events[evId];
+  ev.votes[name] = { name, dates: [...votedDates], ts: Date.now() };
+  save();
+  votedDates = [];
+
+  // Check if everyone responded
+  const responded = Object.keys(ev.votes).length;
+  const total = ev.invites.length;
+
+  alert(`Thanks, ${name}! Your availability has been recorded.${responded >= total ? '\n\n🎉 Everyone has responded! The organizer can now pick the best date.' : `\n\n${responded} of ${total} people have responded.`}`);
+  openDashboard(ev);
+}
+
+// ================================================
+// DASHBOARD
+// ================================================
+let dashEventId = null;
+
+function openDashboard(ev) {
+  dashEventId = ev.id;
+  document.getElementById('dash-event-name').textContent = ev.name;
+  document.getElementById('dash-event-desc').textContent = ev.desc || 'Event coordination dashboard.';
+  renderDashResults(ev);
+  renderDashShare(ev);
+  renderDashVoters(ev);
+  goView('view-dashboard');
+  dashTab('results', document.querySelector('.tabs .tab'));
+}
+
+function dashTab(tab, btn) {
+  document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('dash-results').style.display = tab === 'results' ? 'block' : 'none';
+  document.getElementById('dash-share').style.display = tab === 'share' ? 'block' : 'none';
+  document.getElementById('dash-voters').style.display = tab === 'voters' ? 'block' : 'none';
+}
+
+function renderDashResults(ev) {
+  // Calculate vote counts
+  let counts = {};
+  ev.dates.forEach(d => counts[d] = 0);
+  Object.values(ev.votes).forEach(v => {
+    v.dates.forEach(d => { counts[d] = (counts[d]||0) + 1; });
+  });
+
+  const maxVotes = Math.max(...Object.values(counts), 1);
+  const totalVoters = Object.keys(ev.votes).length;
+  const totalInvited = ev.invites.length;
+  const allResponded = totalVoters >= totalInvited;
+
+  // Result banner
+  const bannerWrap = document.getElementById('result-banner-wrap');
+  if (ev.decidedDate) {
+    bannerWrap.innerHTML = `<div class="result-banner">
+      <h3>✓ Date Confirmed</h3>
+      <div class="win-date">${formatDate(ev.decidedDate)}</div>
+      <p>${totalVoters} people are available on this date. It's happening!</p>
+    </div>`;
+  } else if (allResponded && totalVoters > 0) {
+    const bestDate = ev.dates.reduce((a,b) => counts[a] >= counts[b] ? a : b);
+    bannerWrap.innerHTML = `<div class="result-banner" style="background: linear-gradient(135deg, #4a7c59 0%, #3a6046 100%);">
+      <h3>🗳️ All votes are in!</h3>
+      <div class="win-date">${formatDate(bestDate)}</div>
+      <p>Most popular with ${counts[bestDate]} votes. Confirm this date below!</p>
+    </div>`;
+  } else {
+    bannerWrap.innerHTML = `<div style="background: var(--cream); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 20px; display: flex; align-items: center; gap: 14px;">
+      <div style="font-size: 28px;">🗳️</div>
+      <div><strong>${totalVoters} of ${totalInvited}</strong> people have responded</div>
+    </div>`;
+  }
+
+  // Availability bars
+  const sortedDates = [...ev.dates].sort((a,b) => counts[b] - counts[a]);
+  document.getElementById('avail-grid').innerHTML = sortedDates.map(key => {
+    const pct = totalVoters ? Math.round((counts[key]/totalVoters)*100) : 0;
+    const isBest = counts[key] === maxVotes && maxVotes > 0;
+    return `<div class="avail-row">
+      <div class="avail-date">${formatDate(key)}</div>
+      <div class="avail-bar-track">
+        <div class="avail-bar-fill ${isBest ? 'best' : ''}" style="width:${pct}%"></div>
+      </div>
+      <div class="avail-count">${counts[key]}/${totalInvited}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('avail-hint').textContent = totalVoters === 0
+    ? 'No votes yet. Share the link to collect availability.'
+    : `${totalVoters} ${totalVoters === 1 ? 'person has' : 'people have'} responded.`;
+
+  // Decide button
+  const decideBtnWrap = document.getElementById('decide-btn-wrap');
+  if (!ev.decidedDate && totalVoters > 0) {
+    const bestDate = sortedDates[0];
+    decideBtnWrap.innerHTML = `<button class="btn btn-primary" onclick="confirmDate('${ev.id}', '${bestDate}')">
+      ✓ Confirm ${formatDate(bestDate)} as the Date
+    </button>`;
+  } else {
+    decideBtnWrap.innerHTML = '';
+  }
+}
+
+function renderDashShare(ev) {
+  const url = `${location.href.split('?')[0]}?event=${ev.id}`;
+  document.getElementById('share-url').textContent = url;
+  document.getElementById('invited-guests').innerHTML = ev.invites.map(e => {
+    const friend = (store.friends || []).find(f => f.email === e);
+    const displayName = friend ? friend.name : e;
+    const voted = !!ev.votes[e] || Object.values(ev.votes).some(v => v.name === displayName || v.name === e);
+    const h = (e.charCodeAt(0)*37 + (e.charCodeAt(1)||0)*13) % 360;
+    const ini = displayName.includes('@') ? displayName[0].toUpperCase() : displayName.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    return `<div class="invited-person-row">
+      <div style="width:34px;height:34px;border-radius:50%;background:hsl(${h},55%,48%);color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${ini}</div>
+      <div style="flex:1;font-weight:600;font-size:14px;">${displayName}</div>
+      ${voted ? '<span class="invited-status voted">✓ Responded</span>' : '<span class="invited-status pending">Pending</span>'}
+      <button class="reinvite-btn" onclick="reInvite('${e}', '${displayName.replace(/'/g, "\'")}')">Re-invite</button>
+    </div>`;
+  }).join('');
+}
+
+function renderDashVoters(ev) {
+  const list = document.getElementById('voters-list');
+  const voters = Object.values(ev.votes);
+  if (!voters.length) {
+    list.innerHTML = '<div class="text-muted">No votes yet.</div>';
+    return;
+  }
+  list.innerHTML = voters.map(v =>
+    `<div style="padding: 12px 0; border-bottom: 1px solid var(--cream);">
+      <div style="font-weight: 600; margin-bottom: 6px;">${v.name}</div>
+      <div>${v.dates.map(d => `<span class="date-chip" style="cursor:default;">${formatDate(d)}</span>`).join('')}</div>
+    </div>`
+  ).join('');
+}
+
+function confirmDate(evId, date) {
+  const ev = store.events[evId];
+  ev.decidedDate = date;
+  save();
+  renderDashResults(ev);
+  alert(`🎉 Date confirmed: ${formatDate(date)}!\n\nLet your guests know!`);
+}
+
+function copyLink() {
+  const url = document.getElementById('share-url').textContent;
+  navigator.clipboard.writeText(url).then(() => {
+    const fb = document.getElementById('copy-feedback');
+    fb.style.display = 'inline';
+    setTimeout(() => fb.style.display = 'none', 2000);
+  });
+}
+
+// ================================================
+// URL PARAM — deep-link to vote view
+// ================================================
+function checkUrlParams() {
+  const params = new URLSearchParams(location.search);
+  const evId = params.get('event');
+  if (evId && store.events[evId]) {
+    openVoteView(store.events[evId]);
+  }
+}
+
+
+// ================================================
+// STATS / LEADERBOARD
+// ================================================
+let statsYear = new Date().getFullYear();
+
+function renderStats() {
+  const events = Object.values(store.events || {});
+
+  // Collect all years
+  const years = [...new Set(events.map(ev => new Date(ev.createdAt).getFullYear()))].sort((a,b)=>b-a);
+  if (!years.includes(statsYear)) statsYear = years[0] || new Date().getFullYear();
+
+  // Year tabs
+  const yearTabsEl = document.getElementById('year-tabs');
+  const allYears = years.length ? years : [new Date().getFullYear()];
+  yearTabsEl.innerHTML = allYears.map(y =>
+    `<span class="year-link${y===statsYear?' active':''}" onclick="setStatsYear(${y})">${y}</span>`
+  ).join('');
+
+  // Filter to year
+  const yearEvents = events.filter(ev => new Date(ev.createdAt).getFullYear() === statsYear);
+
+  // Build person stats
+  const people = {};
+  function getOrCreate(key, name) {
+    if (!people[key]) people[key] = { name: name || key, key, organised: 0, attended: 0 };
+    if (name && name !== key && people[key].name === key) people[key].name = name;
+    return people[key];
+  }
+
+  yearEvents.forEach(ev => {
+    // Attended: anyone who voted
+    Object.values(ev.votes || {}).forEach(v => {
+      const p = getOrCreate(v.name, v.name);
+      p.attended++;
+    });
+    // Organised
+    if (ev.organisedBy) {
+      const key = ev.organisedBy.email || ev.organisedBy.name || ev.organisedBy;
+      const name = ev.organisedBy.name || key;
+      const p = getOrCreate(key, name);
+      p.organised++;
+    }
+  });
+
+  const all = Object.values(people);
+
+  // ── Attended leaderboard ──
+  const byAttended = [...all].filter(p=>p.attended>0).sort((a,b)=>b.attended-a.attended);
+  renderLbTable('lb-attended-body','lb-attended-table','lb-attended-empty', byAttended, 'attended');
+
+  // ── Organised leaderboard ──
+  const byOrganised = [...all].filter(p=>p.organised>0).sort((a,b)=>b.organised-a.organised);
+  renderLbTable('lb-organised-body','lb-organised-table','lb-organised-empty', byOrganised, 'organised');
+}
+
+function renderLbTable(tbodyId, tableId, emptyId, sorted, field) {
+  const tbody = document.getElementById(tbodyId);
+  const table = document.getElementById(tableId);
+  const empty = document.getElementById(emptyId);
+
+  if (!sorted.length) {
+    table.style.display = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+  table.style.display = 'table';
+  empty.style.display = 'none';
+
+  tbody.innerHTML = sorted.map((p, i) => {
+    const rank = i + 1;
+    const rankClass = rank===1?'gold':rank===2?'silver':rank===3?'bronze':'';
+    const medal = rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':'';
+    const h = (p.key.charCodeAt(0)*37 + (p.key.charCodeAt(1)||0)*13) % 360;
+    const ini = p.name.includes('@') ? p.name[0].toUpperCase()
+      : p.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const count = p[field];
+    return `<tr>
+      <td><div class="lb-rank-num ${rankClass}">${medal||rank}</div></td>
+      <td><div class="lb-person">
+        <div class="lb-avatar" style="background:hsl(${h},55%,48%)">${ini}</div>
+        <div class="lb-person-name">${p.name}</div>
+      </div></td>
+      <td class="lb-cell-num">${count}</td>
+    </tr>`;
+  }).join('');
+}
+
+function setStatsYear(y) {
+  statsYear = y;
+  renderStats();
+}
+
+// ================================================
+// INIT
+// ================================================
+renderCalendar();
+renderHome();
+renderFriendsList();
+checkUrlParams();
+
+// Demo event seeder (runs once)
+if (!localStorage.getItem('timtime_seeded')) {
+  const demoId = 'camping-trip-demo';
+  const today = new Date();
+  const d1 = new Date(today); d1.setDate(today.getDate() + 10);
+  const d2 = new Date(today); d2.setDate(today.getDate() + 17);
+  const d3 = new Date(today); d3.setDate(today.getDate() + 24);
+  const d4 = new Date(today); d4.setDate(today.getDate() + 31);
+
+  store.events[demoId] = {
+    id: demoId,
+    name: 'Camping Weekend 🏕️',
+    desc: 'Annual group camping trip — let\'s find a date!',
+    dates: [dateKey(d1), dateKey(d2), dateKey(d3), dateKey(d4)],
+    invites: ['alex@email.com', 'sam@email.com', 'jordan@email.com', 'taylor@email.com'],
+    votes: {
+      'Alex': { name: 'Alex', dates: [dateKey(d2), dateKey(d3)], ts: Date.now()-3000 },
+      'Sam': { name: 'Sam', dates: [dateKey(d1), dateKey(d2)], ts: Date.now()-2000 },
+      'Jordan': { name: 'Jordan', dates: [dateKey(d2), dateKey(d4)], ts: Date.now()-1000 },
+    },
+    isInvited: false,
+    organisedBy: { name: 'You', email: 'you@timetime.app' },
+    decidedDate: null,
+    createdAt: Date.now()
+  };
+
+  // Demo invited event
+  const invitedId = 'sarahs-birthday-demo';
+  const i1 = new Date(today); i1.setDate(today.getDate() + 5);
+  const i2 = new Date(today); i2.setDate(today.getDate() + 12);
+  const i3 = new Date(today); i3.setDate(today.getDate() + 19);
+  store.events[invitedId] = {
+    id: invitedId,
+    name: "Sarah\'s Birthday Dinner 🎂",
+    desc: 'Help pick a night that works for everyone!',
+    dates: [dateKey(i1), dateKey(i2), dateKey(i3)],
+    invites: ['you@email.com', 'mike@email.com', 'lisa@email.com'],
+    votes: {
+      'Mike': { name: 'Mike', dates: [dateKey(i1), dateKey(i2)], ts: Date.now()-1000 },
+    },
+    isInvited: true,
+    decidedDate: null,
+    createdAt: Date.now()
+  };
+
+  save();
+  localStorage.setItem('timtime_seeded', '1');
+  renderHome();
+}
+</script>
+</body>
+</html>
